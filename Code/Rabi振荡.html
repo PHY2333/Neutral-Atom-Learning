@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rabi 振荡与布洛赫球演示</title>
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+  <style>
+    :root {
+      --bg: #f6f3ec;
+      --panel: rgba(255, 255, 255, 0.82);
+      --panel-solid: #ffffff;
+      --text: #22313f;
+      --muted: #69727d;
+      --border: rgba(34, 49, 63, 0.12);
+      --primary: #1f7a8c;
+      --primary-strong: #145c68;
+      --accent: #e49b3f;
+      --danger: #c95b5b;
+      --plot-bg: #fbfaf7;
+      --shadow: 0 18px 45px rgba(32, 43, 57, 0.12);
+      --radius: 22px;
+    }
+
+    body.dark {
+      --bg: #101622;
+      --panel: rgba(25, 34, 49, 0.86);
+      --panel-solid: #192231;
+      --text: #edf2f7;
+      --muted: #a9b4c0;
+      --border: rgba(255, 255, 255, 0.12);
+      --primary: #66d9e8;
+      --primary-strong: #45b8c7;
+      --accent: #f6c177;
+      --danger: #ff7b7b;
+      --plot-bg: #121a26;
+      --shadow: 0 18px 45px rgba(0, 0, 0, 0.34);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 10% 10%, rgba(31, 122, 140, 0.16), transparent 30%),
+        radial-gradient(circle at 88% 18%, rgba(228, 155, 63, 0.18), transparent 28%),
+        var(--bg);
+    }
+
+    .app {
+      width: min(1480px, 100%);
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+      align-items: start;
+      margin-bottom: 18px;
+    }
+
+    .hero h1 {
+      margin: 0 0 8px;
+      font-size: clamp(28px, 3.8vw, 48px);
+      line-height: 1.05;
+      letter-spacing: -0.04em;
+    }
+
+    .hero p {
+      margin: 0;
+      max-width: 820px;
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 15px;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .sidebar {
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      position: sticky;
+      top: 24px;
+      max-height: calc(100vh - 48px);
+      overflow: auto;
+    }
+
+    .section-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .section-title h2,
+    .section-title h3 {
+      margin: 0;
+      font-size: 16px;
+      letter-spacing: -0.02em;
+    }
+
+    .hint {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .card {
+      background: var(--panel-solid);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 14px;
+    }
+
+    .control {
+      margin: 14px 0 4px;
+    }
+
+    .control:first-child { margin-top: 0; }
+
+    label {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .value {
+      color: var(--primary-strong);
+      font-variant-numeric: tabular-nums;
+      font-weight: 800;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--primary);
+      margin: 10px 0 0;
+      cursor: pointer;
+    }
+
+    .buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 14px;
+      padding: 11px 12px;
+      font-weight: 800;
+      color: white;
+      background: var(--primary);
+      cursor: pointer;
+      transition: transform 0.16s ease, filter 0.16s ease, background 0.16s ease;
+      box-shadow: 0 10px 20px rgba(31, 122, 140, 0.18);
+    }
+
+    button:hover { transform: translateY(-1px); filter: brightness(1.04); }
+    button:active { transform: translateY(0); }
+    button.secondary { color: var(--text); background: var(--panel-solid); border: 1px solid var(--border); box-shadow: none; }
+    button.accent { background: var(--accent); color: #2b2114; }
+    button.danger { background: var(--danger); }
+    button.full { grid-column: 1 / -1; }
+
+    .preset-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .metric {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px;
+      background: linear-gradient(180deg, rgba(31,122,140,0.08), rgba(31,122,140,0.02));
+    }
+
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+
+    .metric strong {
+      font-size: 18px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .equation {
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 13px;
+    }
+
+    .equation code {
+      color: var(--text);
+      background: rgba(31, 122, 140, 0.1);
+      padding: 2px 6px;
+      border-radius: 8px;
+      font-family: "Cascadia Mono", "Consolas", monospace;
+    }
+
+    .plots {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 18px;
+      min-width: 0;
+    }
+
+    .plot-card {
+      padding: 14px;
+      min-height: 410px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .plot-card.small { min-height: 330px; }
+
+    .plot-header {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 2px 4px 10px;
+    }
+
+    .plot-header h2 {
+      margin: 0;
+      font-size: 18px;
+      letter-spacing: -0.02em;
+    }
+
+    .plot-header p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .plot {
+      flex: 1;
+      width: 100%;
+      min-height: 0;
+    }
+
+    #plotlyWarning {
+      display: none;
+      padding: 16px;
+      border-radius: 18px;
+      background: rgba(201, 91, 91, 0.12);
+      color: var(--danger);
+      border: 1px solid rgba(201, 91, 91, 0.28);
+      margin-bottom: 16px;
+      line-height: 1.7;
+    }
+
+    @media (max-width: 980px) {
+      .hero { grid-template-columns: 1fr; }
+      .toolbar { justify-content: flex-start; }
+      .grid { grid-template-columns: 1fr; }
+      .sidebar { position: static; max-height: none; }
+    }
+
+    @media (max-width: 560px) {
+      .app { padding: 14px; }
+      .buttons, .preset-grid, .metrics { grid-template-columns: 1fr; }
+      .plot-card { min-height: 360px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="hero">
+      <div>
+        <h1>Rabi 振荡 · Bloch 球演示器</h1>
+        <p>
+          初始态取基态 |g⟩，可调 Rabi 频率 Ω、失谐 Δ 和激光相位 φ。
+          右侧同时显示 Bloch 球进动轨迹与激发态概率 P<sub>e</sub>(t)，适合用来理解旋转坐标系下的有效磁场图像。
+        </p>
+      </div>
+      <div class="toolbar">
+        <button class="secondary" id="btnTheme">切换深色模式</button>
+      </div>
+    </header>
+
+    <div id="plotlyWarning">
+      Plotly.js 没有加载成功。请确认浏览器可以访问网络，或者把 Plotly.js 下载到本地后修改脚本路径。
+    </div>
+
+    <section class="grid">
+      <aside class="sidebar panel">
+        <div class="section-title">
+          <h2>控制面板</h2>
+          <span class="hint">单位取 ℏ = 1</span>
+        </div>
+
+        <div class="card">
+          <div class="control">
+            <label><span>Rabi 频率 Ω</span><span class="value" id="valOmega">1.00</span></label>
+            <input type="range" id="omega" min="0.05" max="5" step="0.05" value="1" />
+          </div>
+          <div class="control">
+            <label><span>失谐 Δ</span><span class="value" id="valDelta">0.00</span></label>
+            <input type="range" id="delta" min="-5" max="5" step="0.05" value="0" />
+          </div>
+          <div class="control">
+            <label><span>激光相位 φ</span><span class="value" id="valPhi">0°</span></label>
+            <input type="range" id="phi" min="0" max="360" step="1" value="0" />
+          </div>
+          <div class="control">
+            <label><span>演化时间 t</span><span class="value" id="valTime">0.00</span></label>
+            <input type="range" id="time" min="0" max="16" step="0.02" value="0" />
+          </div>
+          <div class="control">
+            <label><span>播放速度</span><span class="value" id="valSpeed">1.00×</span></label>
+            <input type="range" id="speed" min="0.25" max="3" step="0.25" value="1" />
+          </div>
+        </div>
+
+        <div class="buttons">
+          <button id="btnPlay">播放</button>
+          <button class="danger" id="btnReset">重置</button>
+          <button class="secondary full" id="btnCamera">重置视角</button>
+        </div>
+
+        <div class="card">
+          <div class="section-title">
+            <h3>常用预设</h3>
+            <span class="hint">一键比较</span>
+          </div>
+          <div class="preset-grid">
+            <button class="secondary" data-preset="resonance">共振 Δ=0</button>
+            <button class="secondary" data-preset="detuned">大失谐</button>
+            <button class="secondary" data-preset="phase90">相位 90°</button>
+            <button class="secondary" data-preset="fast">强驱动</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-title">
+            <h3>实时物理量</h3>
+          </div>
+          <div class="metrics">
+            <div class="metric"><span>广义 Rabi 频率 Ωᵣ</span><strong id="mOmegaR">1.000</strong></div>
+            <div class="metric"><span>最大激发概率</span><strong id="mPmax">1.000</strong></div>
+            <div class="metric"><span>振荡周期 T</span><strong id="mPeriod">6.283</strong></div>
+            <div class="metric"><span>当前 Pₑ</span><strong id="mPe">0.000</strong></div>
+          </div>
+        </div>
+
+        <div class="card equation">
+          <div class="section-title">
+            <h3>旋转坐标系图像</h3>
+          </div>
+          <p>
+            有效哈密顿量：<br />
+            <code>H = 1/2 (Ω cosφ σx + Ω sinφ σy − Δ σz)</code>
+          </p>
+          <p>
+            Bloch 矢量绕有效场<br />
+            <code>Ω_eff = (Ωcosφ, Ωsinφ, −Δ)</code><br />
+            进动。初态 |g⟩ 在南极，|e⟩ 在北极。
+          </p>
+        </div>
+      </aside>
+
+      <section class="plots">
+        <article class="plot-card panel">
+          <div class="plot-header">
+            <div>
+              <h2>Bloch 球进动</h2>
+              <p>黄色轨迹为量子态演化，蓝色箭头为有效磁场方向。</p>
+            </div>
+          </div>
+          <div id="blochPlot" class="plot"></div>
+        </article>
+
+        <article class="plot-card small panel">
+          <div class="plot-header">
+            <div>
+              <h2>激发态概率 Pₑ(t)</h2>
+              <p>失谐会降低最大激发概率，同时改变广义 Rabi 频率。</p>
+            </div>
+          </div>
+          <div id="probPlot" class="plot"></div>
+        </article>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    const els = {
+      omega: document.getElementById('omega'),
+      delta: document.getElementById('delta'),
+      phi: document.getElementById('phi'),
+      time: document.getElementById('time'),
+      speed: document.getElementById('speed'),
+      valOmega: document.getElementById('valOmega'),
+      valDelta: document.getElementById('valDelta'),
+      valPhi: document.getElementById('valPhi'),
+      valTime: document.getElementById('valTime'),
+      valSpeed: document.getElementById('valSpeed'),
+      mOmegaR: document.getElementById('mOmegaR'),
+      mPmax: document.getElementById('mPmax'),
+      mPeriod: document.getElementById('mPeriod'),
+      mPe: document.getElementById('mPe'),
+      btnPlay: document.getElementById('btnPlay'),
+      btnReset: document.getElementById('btnReset'),
+      btnCamera: document.getElementById('btnCamera'),
+      btnTheme: document.getElementById('btnTheme'),
+      warning: document.getElementById('plotlyWarning')
+    };
+
+    const dt = 0.04;
+    const tMax = 16;
+    let playing = false;
+    let rafId = null;
+    let lastFrame = null;
+    let cachedSphere = null;
+
+    const defaultCamera = {
+      eye: { x: 1.55, y: 1.65, z: 1.22 },
+      center: { x: 0, y: 0, z: 0 },
+      up: { x: 0, y: 0, z: 1 }
+    };
+    let currentCamera = JSON.parse(JSON.stringify(defaultCamera));
+    let blochCameraEventsBound = false;
+
+    function cloneCamera(camera) {
+      return JSON.parse(JSON.stringify(camera));
+    }
+
+    function updateCameraPart(camera, key, value) {
+      const parts = key.split('.').slice(2);
+      let target = camera;
+      for (let i = 0; i < parts.length - 1; i++) {
+        target[parts[i]] = target[parts[i]] || {};
+        target = target[parts[i]];
+      }
+      target[parts[parts.length - 1]] = value;
+    }
+
+    function bindBlochCameraEvents() {
+      const gd = document.getElementById('blochPlot');
+      if (!gd || !gd.on || blochCameraEventsBound) return;
+
+      gd.on('plotly_relayout', (eventData) => {
+        if (!eventData) return;
+
+        if (eventData['scene.camera']) {
+          currentCamera = cloneCamera(eventData['scene.camera']);
+          return;
+        }
+
+        let cameraChanged = false;
+        const nextCamera = cloneCamera(currentCamera);
+        Object.keys(eventData).forEach((key) => {
+          if (key.startsWith('scene.camera.')) {
+            updateCameraPart(nextCamera, key, eventData[key]);
+            cameraChanged = true;
+          }
+        });
+        if (cameraChanged) currentCamera = nextCamera;
+      });
+
+      blochCameraEventsBound = true;
+    }
+
+    function theme() {
+      const dark = document.body.classList.contains('dark');
+      return {
+        dark,
+        paper: dark ? '#192231' : '#ffffff',
+        plot: dark ? '#121a26' : '#fbfaf7',
+        text: dark ? '#edf2f7' : '#22313f',
+        grid: dark ? 'rgba(255,255,255,0.12)' : 'rgba(34,49,63,0.12)',
+        muted: dark ? '#a9b4c0' : '#69727d',
+        primary: dark ? '#66d9e8' : '#1f7a8c',
+        accent: dark ? '#f6c177' : '#e49b3f',
+        danger: dark ? '#ff7b7b' : '#c95b5b'
+      };
+    }
+
+    function getParams() {
+      return {
+        omega: Number(els.omega.value),
+        delta: Number(els.delta.value),
+        phiDeg: Number(els.phi.value),
+        time: Number(els.time.value),
+        speed: Number(els.speed.value)
+      };
+    }
+
+    function calculateTrajectory({ omega, delta, phiDeg }) {
+      const phi = phiDeg * Math.PI / 180;
+      const omegaR = Math.hypot(omega, delta) || 1e-9;
+      const n = {
+        x: omega * Math.cos(phi) / omegaR,
+        y: omega * Math.sin(phi) / omegaR,
+        z: -delta / omegaR
+      };
+
+      const path = { t: [], x: [], y: [], z: [], pe: [] };
+      for (let t = 0; t <= tMax + 1e-9; t += dt) {
+        const theta = omegaR * t;
+        const c = Math.cos(theta);
+        const s = Math.sin(theta);
+        const oneMinusC = 1 - c;
+
+        // Rodrigues 公式：r(t) = r0 cosθ + (n×r0)sinθ + n(n·r0)(1−cosθ), r0=(0,0,-1)
+        const x = -n.y * s - n.x * n.z * oneMinusC;
+        const y =  n.x * s - n.y * n.z * oneMinusC;
+        const z = -c - n.z * n.z * oneMinusC;
+        const pe = (1 + z) / 2;
+
+        path.t.push(Number(t.toFixed(4)));
+        path.x.push(x);
+        path.y.push(y);
+        path.z.push(z);
+        path.pe.push(Math.max(0, Math.min(1, pe)));
+      }
+
+      return {
+        path,
+        n,
+        omegaR,
+        pMax: omegaR > 0 ? (omega * omega) / (omegaR * omegaR) : 0,
+        period: omegaR > 0 ? 2 * Math.PI / omegaR : Infinity
+      };
+    }
+
+    function getSphereTraces(colors) {
+      if (cachedSphere && cachedSphere.dark === colors.dark) return cachedSphere.traces;
+
+      const uCount = 34;
+      const vCount = 18;
+      const x = [], y = [], z = [];
+      for (let i = 0; i <= vCount; i++) {
+        const v = i * Math.PI / vCount;
+        const rowX = [], rowY = [], rowZ = [];
+        for (let j = 0; j <= uCount; j++) {
+          const u = j * 2 * Math.PI / uCount;
+          rowX.push(Math.sin(v) * Math.cos(u));
+          rowY.push(Math.sin(v) * Math.sin(u));
+          rowZ.push(Math.cos(v));
+        }
+        x.push(rowX); y.push(rowY); z.push(rowZ);
+      }
+
+      const line = (fn, name) => {
+        const xs = [], ys = [], zs = [];
+        for (let i = 0; i <= 160; i++) {
+          const a = i * 2 * Math.PI / 160;
+          const p = fn(a);
+          xs.push(p[0]); ys.push(p[1]); zs.push(p[2]);
+        }
+        return {
+          type: 'scatter3d', mode: 'lines', name,
+          x: xs, y: ys, z: zs,
+          line: { color: colors.grid, width: 3 },
+          hoverinfo: 'skip', showlegend: false
+        };
+      };
+
+      const axes = [
+        { name: 'x-axis', x: [-1.15, 1.15], y: [0, 0], z: [0, 0] },
+        { name: 'y-axis', x: [0, 0], y: [-1.15, 1.15], z: [0, 0] },
+        { name: 'z-axis', x: [0, 0], y: [0, 0], z: [-1.15, 1.15] }
+      ].map(a => ({
+        type: 'scatter3d', mode: 'lines',
+        x: a.x, y: a.y, z: a.z,
+        line: { color: colors.muted, width: 2 },
+        hoverinfo: 'skip', showlegend: false
+      }));
+
+      const labels = {
+        type: 'scatter3d', mode: 'text',
+        x: [1.23, 0, 0, 0, 0],
+        y: [0, 1.23, 0, 0, 0],
+        z: [0, 0, 1.23, 1.05, -1.05],
+        text: ['x', 'y', 'z', '|e⟩', '|g⟩'],
+        textfont: { color: colors.text, size: 13 },
+        hoverinfo: 'skip', showlegend: false
+      };
+
+      const traces = [
+        {
+          type: 'surface', x, y, z,
+          opacity: colors.dark ? 0.16 : 0.18,
+          showscale: false,
+          colorscale: [[0, colors.primary], [1, colors.accent]],
+          hoverinfo: 'skip', showlegend: false,
+          name: 'Bloch sphere'
+        },
+        line(a => [Math.cos(a), Math.sin(a), 0], 'equator'),
+        line(a => [Math.cos(a), 0, Math.sin(a)], 'meridian-xz'),
+        line(a => [0, Math.cos(a), Math.sin(a)], 'meridian-yz'),
+        ...axes,
+        labels
+      ];
+
+      cachedSphere = { dark: colors.dark, traces };
+      return traces;
+    }
+
+    function updateLabels(params, sim, currentIndex) {
+      const currentPe = sim.path.pe[currentIndex] ?? 0;
+      els.valOmega.textContent = params.omega.toFixed(2);
+      els.valDelta.textContent = params.delta.toFixed(2);
+      els.valPhi.textContent = `${Math.round(params.phiDeg)}°`;
+      els.valTime.textContent = params.time.toFixed(2);
+      els.valSpeed.textContent = `${params.speed.toFixed(2)}×`;
+      els.mOmegaR.textContent = sim.omegaR.toFixed(3);
+      els.mPmax.textContent = sim.pMax.toFixed(3);
+      els.mPeriod.textContent = Number.isFinite(sim.period) ? sim.period.toFixed(3) : '∞';
+      els.mPe.textContent = currentPe.toFixed(3);
+    }
+
+    function render() {
+      if (!window.Plotly) {
+        els.warning.style.display = 'block';
+        return;
+      }
+
+      const params = getParams();
+      const sim = calculateTrajectory(params);
+      const colors = theme();
+      const currentIndex = Math.min(Math.round(params.time / dt), sim.path.t.length - 1);
+      updateLabels(params, sim, currentIndex);
+
+      const rNow = {
+        x: sim.path.x[currentIndex],
+        y: sim.path.y[currentIndex],
+        z: sim.path.z[currentIndex]
+      };
+
+      const traces3d = [
+        ...getSphereTraces(colors),
+        {
+          type: 'scatter3d', mode: 'lines', name: '有效场 Ω_eff',
+          x: [0, sim.n.x * 1.18],
+          y: [0, sim.n.y * 1.18],
+          z: [0, sim.n.z * 1.18],
+          line: { color: colors.primary, width: 8 },
+          hovertemplate: 'Ω_eff 方向<extra></extra>'
+        },
+        {
+          type: 'cone', name: 'Ω_eff arrow',
+          x: [sim.n.x * 1.18], y: [sim.n.y * 1.18], z: [sim.n.z * 1.18],
+          u: [sim.n.x], v: [sim.n.y], w: [sim.n.z],
+          sizemode: 'absolute', sizeref: 0.18,
+          anchor: 'tip', showscale: false,
+          colorscale: [[0, colors.primary], [1, colors.primary]],
+          hoverinfo: 'skip', showlegend: false
+        },
+        {
+          type: 'scatter3d', mode: 'lines', name: '态矢量',
+          x: [0, rNow.x], y: [0, rNow.y], z: [0, rNow.z],
+          line: { color: colors.danger, width: 6 },
+          hoverinfo: 'skip', showlegend: false
+        },
+        {
+          type: 'scatter3d', mode: 'lines', name: '演化轨迹',
+          x: sim.path.x.slice(0, currentIndex + 1),
+          y: sim.path.y.slice(0, currentIndex + 1),
+          z: sim.path.z.slice(0, currentIndex + 1),
+          line: { color: colors.accent, width: 7 },
+          hoverinfo: 'skip'
+        },
+        {
+          type: 'scatter3d', mode: 'markers', name: '当前态',
+          x: [rNow.x], y: [rNow.y], z: [rNow.z],
+          marker: { size: 7, color: colors.danger, line: { color: colors.paper, width: 2 } },
+          hovertemplate: '当前态<br>x=%{x:.3f}<br>y=%{y:.3f}<br>z=%{z:.3f}<extra></extra>'
+        }
+      ];
+
+      const layout3d = {
+        paper_bgcolor: colors.paper,
+        plot_bgcolor: colors.plot,
+        font: { color: colors.text },
+        margin: { l: 0, r: 0, b: 0, t: 0 },
+        showlegend: false,
+        uirevision: 'keep-bloch-camera',
+        scene: {
+          bgcolor: colors.plot,
+          aspectmode: 'cube',
+          camera: cloneCamera(currentCamera),
+          xaxis: { range: [-1.28, 1.28], title: '', showgrid: false, zeroline: false, showticklabels: false, showbackground: false },
+          yaxis: { range: [-1.28, 1.28], title: '', showgrid: false, zeroline: false, showticklabels: false, showbackground: false },
+          zaxis: { range: [-1.28, 1.28], title: '', showgrid: false, zeroline: false, showticklabels: false, showbackground: false }
+        }
+      };
+
+      const allPe = {
+        type: 'scatter', mode: 'lines', name: '完整理论曲线',
+        x: sim.path.t, y: sim.path.pe,
+        line: { color: colors.grid, width: 3, dash: 'dash' },
+        hovertemplate: 't=%{x:.2f}<br>Pₑ=%{y:.3f}<extra></extra>'
+      };
+
+      const evolvedPe = {
+        type: 'scatter', mode: 'lines', name: '已演化部分',
+        x: sim.path.t.slice(0, currentIndex + 1),
+        y: sim.path.pe.slice(0, currentIndex + 1),
+        line: { color: colors.primary, width: 4 },
+        fill: 'tozeroy', fillcolor: colors.dark ? 'rgba(102,217,232,0.18)' : 'rgba(31,122,140,0.16)',
+        hovertemplate: 't=%{x:.2f}<br>Pₑ=%{y:.3f}<extra></extra>'
+      };
+
+      const markerPe = {
+        type: 'scatter', mode: 'markers', name: '当前点',
+        x: [sim.path.t[currentIndex]], y: [sim.path.pe[currentIndex]],
+        marker: { size: 12, color: colors.danger, line: { color: colors.paper, width: 2 } },
+        hovertemplate: '当前<br>t=%{x:.2f}<br>Pₑ=%{y:.3f}<extra></extra>'
+      };
+
+      const maxLine = {
+        type: 'scatter', mode: 'lines', name: '最大概率',
+        x: [0, tMax], y: [sim.pMax, sim.pMax],
+        line: { color: colors.accent, width: 2, dash: 'dot' },
+        hoverinfo: 'skip'
+      };
+
+      const layout2d = {
+        paper_bgcolor: colors.paper,
+        plot_bgcolor: colors.plot,
+        font: { color: colors.text },
+        margin: { l: 56, r: 18, b: 46, t: 8 },
+        showlegend: false,
+        xaxis: { title: '时间 t', range: [0, tMax], gridcolor: colors.grid, zerolinecolor: colors.grid },
+        yaxis: { title: '激发态概率 Pₑ', range: [0, 1.05], gridcolor: colors.grid, zerolinecolor: colors.grid },
+        annotations: [
+          {
+            x: tMax * 0.77,
+            y: Math.min(1.0, sim.pMax + 0.055),
+            text: `Pₑ,max = ${sim.pMax.toFixed(3)}`,
+            showarrow: false,
+            font: { color: colors.accent, size: 12 }
+          }
+        ]
+      };
+
+      const config = { responsive: true, displaylogo: false, modeBarButtonsToRemove: ['lasso2d', 'select2d'] };
+      const blochRender = Plotly.react('blochPlot', traces3d, layout3d, config);
+      if (blochRender && typeof blochRender.then === 'function') {
+        blochRender.then(bindBlochCameraEvents);
+      } else {
+        bindBlochCameraEvents();
+      }
+      Plotly.react('probPlot', [allPe, maxLine, evolvedPe, markerPe], layout2d, config);
+    }
+
+    function setPreset(name) {
+      const presets = {
+        resonance: { omega: 1, delta: 0, phi: 0, time: 0 },
+        detuned: { omega: 1, delta: 2.2, phi: 0, time: 0 },
+        phase90: { omega: 1, delta: 0, phi: 90, time: 0 },
+        fast: { omega: 2.4, delta: 0.4, phi: 35, time: 0 }
+      };
+      const p = presets[name];
+      if (!p) return;
+      els.omega.value = p.omega;
+      els.delta.value = p.delta;
+      els.phi.value = p.phi;
+      els.time.value = p.time;
+      render();
+    }
+
+    function stop() {
+      playing = false;
+      els.btnPlay.textContent = '播放';
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = null;
+      lastFrame = null;
+    }
+
+    function loop(timestamp) {
+      if (!playing) return;
+      if (lastFrame === null) lastFrame = timestamp;
+      const elapsed = Math.min(0.08, (timestamp - lastFrame) / 1000);
+      lastFrame = timestamp;
+
+      const params = getParams();
+      let next = params.time + elapsed * params.speed;
+      if (next > tMax) next = 0;
+      els.time.value = next.toFixed(2);
+      render();
+      rafId = requestAnimationFrame(loop);
+    }
+
+    els.btnPlay.addEventListener('click', () => {
+      playing = !playing;
+      els.btnPlay.textContent = playing ? '暂停' : '播放';
+      if (playing) rafId = requestAnimationFrame(loop);
+      else stop();
+    });
+
+    els.btnReset.addEventListener('click', () => {
+      stop();
+      els.time.value = 0;
+      render();
+    });
+
+    els.btnCamera.addEventListener('click', () => {
+      currentCamera = cloneCamera(defaultCamera);
+      render();
+    });
+
+    els.btnTheme.addEventListener('click', () => {
+      document.body.classList.toggle('dark');
+      cachedSphere = null;
+      render();
+    });
+
+    document.querySelectorAll('[data-preset]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        stop();
+        setPreset(btn.dataset.preset);
+      });
+    });
+
+    ['omega', 'delta', 'phi', 'time', 'speed'].forEach(id => {
+      els[id].addEventListener('input', () => {
+        if (id === 'time') stop();
+        render();
+      });
+    });
+
+    window.addEventListener('resize', () => {
+      if (window.Plotly) {
+        Plotly.Plots.resize('blochPlot');
+        Plotly.Plots.resize('probPlot');
+      }
+    });
+
+    render();
+  </script>
+</body>
+</html>

@@ -2,7 +2,7 @@
 $$
 	\hat{H}_{Z}=-\boldsymbol{\mu}\cdot \mathbf{B}
 $$
-打破了原子哈密顿量的球对称性，$\boldsymbol{\mu}=\boldsymbol{\mu}_{L}+\boldsymbol{\mu}_{S}$。
+打破了原子哈密顿量的球对称性(可以看[[磁势能]])，$\boldsymbol{\mu}=\boldsymbol{\mu}_{L}+\boldsymbol{\mu}_{S}$。
 $$
 	\boldsymbol{\mu}_{L}=-\mu_{B} \frac{\mathbf{L}}{\hbar},
 	\boldsymbol{\mu}_{S}=-g_{s}\mu_{B} \frac{\mathbf{S}}{\hbar}

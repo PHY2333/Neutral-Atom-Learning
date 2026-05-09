@@ -11,6 +11,8 @@ $\hat{H}_{\mathrm{int}}=-\hat{\mathbf{d}}\cdot \mathbf{E}(t)$
 $$
 	\Omega=-\frac{\mathbf{d}_{eg}\cdot\boldsymbol{\epsilon}}{\hbar}E_{0}
 $$
+>对于二能级系统讨论不必使用复杂度任意偏振，因为强行引入任意偏振，只会引入$\mathbf{d}$和$\mathcal{E}$的夹角因子$\cos\theta$,影响$\Omega$的大小(偏振失配)。而实验中会避免这种情况发生(见[[半经典光-原子相互作用]]中电偶极矩方向的确定)
+
 ---
 ### 相互作用哈密顿量
 $$

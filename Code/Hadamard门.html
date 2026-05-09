@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hadamard 门与 Bloch 球参数演化：可调视角版</title>
+  <style>
+    :root {
+      --bg: #f7f3ea;
+      --panel: rgba(255, 255, 255, 0.86);
+      --panel-solid: #ffffff;
+      --text: #1f2d3d;
+      --muted: #687385;
+      --border: rgba(31, 45, 61, 0.13);
+      --primary: #1f7a8c;
+      --primary-strong: #155e6b;
+      --accent: #d99a36;
+      --danger: #c85f5f;
+      --good: #4f8a5b;
+      --plot: #fbfaf6;
+      --shadow: 0 18px 46px rgba(31, 45, 61, 0.12);
+      --radius: 22px;
+    }
+
+    body.dark {
+      --bg: #101722;
+      --panel: rgba(25, 35, 50, 0.88);
+      --panel-solid: #192332;
+      --text: #edf2f7;
+      --muted: #a8b3c2;
+      --border: rgba(255, 255, 255, 0.13);
+      --primary: #65d8e8;
+      --primary-strong: #80e7f2;
+      --accent: #f4bd63;
+      --danger: #ff8585;
+      --good: #8bd49a;
+      --plot: #121b28;
+      --shadow: 0 18px 46px rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      font-family: Inter, "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+      background:
+        radial-gradient(circle at 10% 10%, rgba(31, 122, 140, 0.15), transparent 30%),
+        radial-gradient(circle at 90% 18%, rgba(217, 154, 54, 0.18), transparent 28%),
+        var(--bg);
+    }
+
+    .app {
+      width: min(1500px, 100%);
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+      align-items: start;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(26px, 3.6vw, 46px);
+      letter-spacing: -0.04em;
+      line-height: 1.08;
+    }
+
+    .lead {
+      margin: 0;
+      max-width: 980px;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.75;
+    }
+
+    .toolbar {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 390px 1fr;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .panel {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .sidebar {
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      position: sticky;
+      top: 18px;
+      max-height: calc(100vh - 36px);
+      overflow: auto;
+    }
+
+    .card {
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: var(--panel-solid);
+    }
+
+    .section-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .section-title h2,
+    .section-title h3 {
+      margin: 0;
+      font-size: 16px;
+      letter-spacing: -0.02em;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .control {
+      margin: 14px 0 4px;
+    }
+
+    .control:first-child { margin-top: 0; }
+
+    label {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .value {
+      color: var(--primary-strong);
+      font-variant-numeric: tabular-nums;
+      font-weight: 900;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      margin-top: 10px;
+      accent-color: var(--primary);
+      cursor: pointer;
+    }
+
+    button {
+      border: 0;
+      border-radius: 14px;
+      padding: 11px 12px;
+      font-weight: 900;
+      color: #fff;
+      background: var(--primary);
+      cursor: pointer;
+      transition: transform 0.15s ease, filter 0.15s ease;
+      box-shadow: 0 10px 20px rgba(31, 122, 140, 0.18);
+    }
+
+    button:hover { transform: translateY(-1px); filter: brightness(1.04); }
+    button:active { transform: translateY(0); }
+
+    button.secondary {
+      color: var(--text);
+      background: var(--panel-solid);
+      border: 1px solid var(--border);
+      box-shadow: none;
+    }
+
+    button.accent { background: var(--accent); color: #2b2114; }
+    button.good { background: var(--good); color: #fff; }
+    button.danger { background: var(--danger); color: #fff; }
+
+    .buttons,
+    .preset-grid,
+    .view-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 9px;
+    }
+
+    .full { grid-column: 1 / -1; }
+
+    .plots {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(360px, 0.9fr);
+      gap: 18px;
+      min-width: 0;
+    }
+
+    .plot-card {
+      padding: 14px;
+      min-width: 0;
+    }
+
+    .plot-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      gap: 14px;
+      padding: 2px 4px 10px;
+    }
+
+    .plot-header h2 {
+      margin: 0;
+      font-size: 18px;
+      letter-spacing: -0.02em;
+    }
+
+    .plot-header p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    canvas {
+      width: 100%;
+      display: block;
+      background: var(--plot);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+    }
+
+    #blochCanvas { height: 610px; cursor: grab; touch-action: none; }
+    #blochCanvas.dragging { cursor: grabbing; }
+    #paramCanvas { height: 310px; }
+
+    .right-column {
+      display: grid;
+      gap: 18px;
+    }
+
+    .state-card {
+      padding: 16px;
+    }
+
+    .formula {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.75;
+      font-size: 13px;
+    }
+
+    .formula .math {
+      display: block;
+      margin: 10px 0;
+      padding: 10px 12px;
+      border-radius: 14px;
+      color: var(--text);
+      background: rgba(31, 122, 140, 0.09);
+      font-family: "Cascadia Mono", "Consolas", monospace;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .metric {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px;
+      background: linear-gradient(180deg, rgba(31,122,140,0.08), rgba(31,122,140,0.02));
+      min-width: 0;
+    }
+
+    .metric span {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .metric strong {
+      display: block;
+      font-size: 16px;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .complex {
+      margin-top: 12px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      color: var(--text);
+      background: var(--plot);
+      font-family: "Cascadia Mono", "Consolas", monospace;
+      line-height: 1.7;
+      overflow-x: auto;
+      white-space: nowrap;
+      font-size: 13px;
+    }
+
+    .note {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.72;
+    }
+
+    .note strong { color: var(--text); }
+
+    .legend-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 14px;
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 8px;
+    }
+
+    .swatch {
+      width: 12px;
+      height: 12px;
+      display: inline-block;
+      border-radius: 99px;
+      vertical-align: -2px;
+      margin-right: 5px;
+    }
+
+    .small-note {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    @media (max-width: 1180px) {
+      .grid { grid-template-columns: 1fr; }
+      .sidebar { position: static; max-height: none; }
+    }
+
+    @media (max-width: 850px) {
+      header { grid-template-columns: 1fr; }
+      .toolbar { justify-content: flex-start; }
+      .plots { grid-template-columns: 1fr; }
+      #blochCanvas { height: 520px; }
+    }
+
+    @media (max-width: 560px) {
+      .app { padding: 14px; }
+      .buttons, .preset-grid, .metrics, .view-grid { grid-template-columns: 1fr; }
+      #blochCanvas { height: 430px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <div>
+        <h1>Hadamard 门：Bloch 球上从 |0⟩ 旋转到 |+⟩</h1>
+        <p class="lead">
+          使用态矢量参数化
+          ψ(θ,φ) = [e<sup>−iφ/2</sup> cos(θ/2), e<sup>iφ/2</sup> sin(θ/2)]ᵀ。
+          你可以设置任意初始态、旋转轴和脉冲面积；Bloch 球现在支持<strong>拖动旋转视角</strong>与<strong>滚轮缩放</strong>。
+        </p>
+      </div>
+      <div class="toolbar">
+        <button class="secondary" id="btnTheme">切换深色模式</button>
+        <button class="secondary" id="btnResetViewTop">重置 Bloch 球视角</button>
+      </div>
+    </header>
+
+    <section class="grid">
+      <aside class="sidebar panel">
+        <div class="section-title">
+          <h2>控制面板</h2>
+          <span class="hint">角度单位：度</span>
+        </div>
+
+        <div class="card">
+          <div class="section-title">
+            <h3>初始态参数</h3>
+            <span class="hint">ψ(θ₀,φ₀)</span>
+          </div>
+          <div class="control">
+            <label><span>初始 θ₀</span><span class="value" id="valTheta0">0°</span></label>
+            <input type="range" id="theta0" min="0" max="180" step="1" value="0" />
+          </div>
+          <div class="control">
+            <label><span>初始 φ₀</span><span class="value" id="valPhi0">0°</span></label>
+            <input type="range" id="phi0" min="0" max="360" step="1" value="0" />
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-title">
+            <h3>旋转门参数</h3>
+            <span class="hint">U = exp[-i α n·σ/2]</span>
+          </div>
+          <div class="control">
+            <label><span>旋转轴极角 Θₙ</span><span class="value" id="valAxisTheta">90°</span></label>
+            <input type="range" id="axisTheta" min="0" max="180" step="1" value="90" />
+          </div>
+          <div class="control">
+            <label><span>旋转轴方位角 Φₙ</span><span class="value" id="valAxisPhi">90°</span></label>
+            <input type="range" id="axisPhi" min="0" max="360" step="1" value="90" />
+          </div>
+          <div class="control">
+            <label><span>总脉冲面积 α</span><span class="value" id="valAlpha">90°</span></label>
+            <input type="range" id="alpha" min="-360" max="360" step="1" value="90" />
+          </div>
+          <div class="control">
+            <label><span>演化进度 s</span><span class="value" id="valProgress">0%</span></label>
+            <input type="range" id="progress" min="0" max="1" step="0.005" value="0" />
+          </div>
+          <div class="control">
+            <label><span>播放速度</span><span class="value" id="valSpeed">1.00×</span></label>
+            <input type="range" id="speed" min="0.25" max="3" step="0.25" value="1" />
+          </div>
+        </div>
+
+        <div class="buttons">
+          <button id="btnPlay">播放</button>
+          <button class="danger" id="btnResetProgress">进度归零</button>
+          <button class="good full" id="btnHadamard">默认：|0⟩ → |+⟩</button>
+          <button class="secondary" id="btnJumpEnd">跳到终点</button>
+          <button class="secondary" id="btnRandom">随机初态</button>
+        </div>
+
+        <div class="card">
+          <div class="section-title">
+            <h3>常用旋转轴</h3>
+            <span class="hint">快速设置 n</span>
+          </div>
+          <div class="preset-grid">
+            <button class="secondary" data-axis="x">+x 轴</button>
+            <button class="secondary" data-axis="y">+y 轴</button>
+            <button class="secondary" data-axis="z">+z 轴</button>
+            <button class="secondary" data-axis="minusY">−y 轴</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-title">
+            <h3>Bloch 球视角</h3>
+            <span class="hint">手动调视角</span>
+          </div>
+          <div class="control">
+            <label><span>视角 yaw</span><span class="value" id="valYaw">-42°</span></label>
+            <input type="range" id="viewYaw" min="-180" max="180" step="1" value="-42" />
+          </div>
+          <div class="control">
+            <label><span>视角 pitch</span><span class="value" id="valPitch">24°</span></label>
+            <input type="range" id="viewPitch" min="-80" max="80" step="1" value="24" />
+          </div>
+          <div class="control">
+            <label><span>缩放 zoom</span><span class="value" id="valZoom">1.00×</span></label>
+            <input type="range" id="viewZoom" min="0.55" max="1.8" step="0.01" value="1.00" />
+          </div>
+          <div class="view-grid">
+            <button class="secondary full" id="btnResetView">重置视角</button>
+          </div>
+          <div class="small-note">
+            操作方式：<strong>鼠标拖动</strong>可旋转视角，<strong>滚轮</strong>可缩放，<strong>双击 Bloch 球</strong>可重置视角。
+          </div>
+        </div>
+
+        <div class="card note">
+          <strong>默认 Hadamard 演示：</strong><br />
+          从 |0⟩ 出发，取旋转轴 n = +y，脉冲面积 α = π/2。
+          这对应单比特旋转 R<sub>y</sub>(π/2)，把 Bloch 向量从北极转到 +x 方向，因此
+          |0⟩ → |+⟩ = (|0⟩+|1⟩)/√2。严格的 Hadamard 与 R<sub>y</sub>(π/2) 只差一个可由 virtual Z 修正的相位约定。
+        </div>
+      </aside>
+
+      <section class="plots">
+        <article class="plot-card panel">
+          <div class="plot-header">
+            <div>
+              <h2>Bloch 球旋转过程</h2>
+              <p>橙色曲线是态矢量轨迹，蓝色箭头是旋转轴 n，红色箭头是当前 Bloch 向量。</p>
+            </div>
+          </div>
+          <canvas id="blochCanvas"></canvas>
+          <div class="legend-row">
+            <span><i class="swatch" style="background:#1f7a8c"></i>旋转轴 n</span>
+            <span><i class="swatch" style="background:#d99a36"></i>演化轨迹</span>
+            <span><i class="swatch" style="background:#c85f5f"></i>当前态</span>
+            <span><i class="swatch" style="background:#4f8a5b"></i>目标终态</span>
+          </div>
+        </article>
+
+        <div class="right-column">
+          <article class="plot-card panel">
+            <div class="plot-header">
+              <div>
+                <h2>θ(t), φ(t) 参数演化</h2>
+                <p>这里的 t 用归一化进度 s 表示，实际实验中 α(t)=∫Ω(t)dt。</p>
+              </div>
+            </div>
+            <canvas id="paramCanvas"></canvas>
+          </article>
+
+          <article class="panel state-card">
+            <div class="section-title">
+              <h2>当前量子态</h2>
+              <span class="hint">采用对称相位规范</span>
+            </div>
+            <p class="formula">
+              公式：
+              <span class="math">|ψ(θ,φ)⟩ = [ e^(−iφ/2) cos(θ/2), e^(iφ/2) sin(θ/2) ]ᵀ</span>
+            </p>
+
+            <div class="metrics">
+              <div class="metric"><span>当前 θ</span><strong id="mTheta">0°</strong></div>
+              <div class="metric"><span>当前 φ</span><strong id="mPhi">0°</strong></div>
+              <div class="metric"><span>Bloch 向量 r</span><strong id="mVector">(0,0,1)</strong></div>
+              <div class="metric"><span>P(|1⟩)</span><strong id="mP1">0.000</strong></div>
+            </div>
+
+            <div class="complex" id="spinorBox">
+              |ψ⟩ = [1.000 + 0.000i, 0.000 + 0.000i]ᵀ
+            </div>
+
+            <p class="note">
+              说明：Bloch 球上的一点对应一类只差全局相位的量子态。
+              上面的写法把全局相位固定成对称形式，因此 φ/2 同时出现在两个分量的相位中。
+            </p>
+          </article>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    const els = {
+      theta0: document.getElementById('theta0'),
+      phi0: document.getElementById('phi0'),
+      axisTheta: document.getElementById('axisTheta'),
+      axisPhi: document.getElementById('axisPhi'),
+      alpha: document.getElementById('alpha'),
+      progress: document.getElementById('progress'),
+      speed: document.getElementById('speed'),
+
+      viewYaw: document.getElementById('viewYaw'),
+      viewPitch: document.getElementById('viewPitch'),
+      viewZoom: document.getElementById('viewZoom'),
+
+      valTheta0: document.getElementById('valTheta0'),
+      valPhi0: document.getElementById('valPhi0'),
+      valAxisTheta: document.getElementById('valAxisTheta'),
+      valAxisPhi: document.getElementById('valAxisPhi'),
+      valAlpha: document.getElementById('valAlpha'),
+      valProgress: document.getElementById('valProgress'),
+      valSpeed: document.getElementById('valSpeed'),
+      valYaw: document.getElementById('valYaw'),
+      valPitch: document.getElementById('valPitch'),
+      valZoom: document.getElementById('valZoom'),
+
+      mTheta: document.getElementById('mTheta'),
+      mPhi: document.getElementById('mPhi'),
+      mVector: document.getElementById('mVector'),
+      mP1: document.getElementById('mP1'),
+      spinorBox: document.getElementById('spinorBox'),
+
+      blochCanvas: document.getElementById('blochCanvas'),
+      paramCanvas: document.getElementById('paramCanvas'),
+
+      btnPlay: document.getElementById('btnPlay'),
+      btnResetProgress: document.getElementById('btnResetProgress'),
+      btnHadamard: document.getElementById('btnHadamard'),
+      btnJumpEnd: document.getElementById('btnJumpEnd'),
+      btnRandom: document.getElementById('btnRandom'),
+      btnTheme: document.getElementById('btnTheme'),
+      btnResetView: document.getElementById('btnResetView'),
+      btnResetViewTop: document.getElementById('btnResetViewTop')
+    };
+
+    const DEG = Math.PI / 180;
+    const RAD = 180 / Math.PI;
+    const samples = 220;
+    const defaultView = { yaw: -42, pitch: 24, zoom: 1.00 };
+
+    let playing = false;
+    let rafId = null;
+    let lastFrame = null;
+
+    let isDragging = false;
+    let lastPointer = { x: 0, y: 0 };
+
+    function cssVar(name) {
+      return getComputedStyle(document.body).getPropertyValue(name).trim();
+    }
+
+    function colors() {
+      return {
+        text: cssVar('--text'),
+        muted: cssVar('--muted'),
+        border: cssVar('--border'),
+        primary: cssVar('--primary'),
+        primaryStrong: cssVar('--primary-strong'),
+        accent: cssVar('--accent'),
+        danger: cssVar('--danger'),
+        good: cssVar('--good'),
+        plot: cssVar('--plot'),
+        panel: cssVar('--panel-solid')
+      };
+    }
+
+    function clamp(x, lo, hi) {
+      return Math.max(lo, Math.min(hi, x));
+    }
+
+    function getParams() {
+      return {
+        theta0: Number(els.theta0.value) * DEG,
+        phi0: Number(els.phi0.value) * DEG,
+        axisTheta: Number(els.axisTheta.value) * DEG,
+        axisPhi: Number(els.axisPhi.value) * DEG,
+        alpha: Number(els.alpha.value) * DEG,
+        progress: Number(els.progress.value),
+        speed: Number(els.speed.value)
+      };
+    }
+
+    function getView() {
+      return {
+        yaw: Number(els.viewYaw.value),
+        pitch: Number(els.viewPitch.value),
+        zoom: Number(els.viewZoom.value)
+      };
+    }
+
+    function setView(v) {
+      els.viewYaw.value = clamp(v.yaw, -180, 180).toFixed(0);
+      els.viewPitch.value = clamp(v.pitch, -80, 80).toFixed(0);
+      els.viewZoom.value = clamp(v.zoom, 0.55, 1.8).toFixed(2);
+    }
+
+    function resetView() {
+      setView(defaultView);
+      render();
+    }
+
+    function formatDeg(rad) {
+      let d = rad * RAD;
+      if (Math.abs(d) < 1e-9) d = 0;
+      return `${d.toFixed(1)}°`;
+    }
+
+    function formatDegPlain(deg) {
+      return `${Number(deg).toFixed(0)}°`;
+    }
+
+    function mod2pi(x) {
+      const twoPi = 2 * Math.PI;
+      return ((x % twoPi) + twoPi) % twoPi;
+    }
+
+    function blochFromAngles(theta, phi) {
+      return {
+        x: Math.sin(theta) * Math.cos(phi),
+        y: Math.sin(theta) * Math.sin(phi),
+        z: Math.cos(theta)
+      };
+    }
+
+    function anglesFromBloch(r) {
+      const z = clamp(r.z, -1, 1);
+      const theta = Math.acos(z);
+      let phi = Math.atan2(r.y, r.x);
+      if (Math.sin(theta) < 1e-8) phi = 0;
+      return { theta, phi: mod2pi(phi) };
+    }
+
+    function axisFromAngles(theta, phi) {
+      return {
+        x: Math.sin(theta) * Math.cos(phi),
+        y: Math.sin(theta) * Math.sin(phi),
+        z: Math.cos(theta)
+      };
+    }
+
+    function rotateVector(r, n, angle) {
+      const c = Math.cos(angle);
+      const s = Math.sin(angle);
+      const dot = r.x * n.x + r.y * n.y + r.z * n.z;
+      const cross = {
+        x: n.y * r.z - n.z * r.y,
+        y: n.z * r.x - n.x * r.z,
+        z: n.x * r.y - n.y * r.x
+      };
+      return {
+        x: r.x * c + cross.x * s + n.x * dot * (1 - c),
+        y: r.y * c + cross.y * s + n.y * dot * (1 - c),
+        z: r.z * c + cross.z * s + n.z * dot * (1 - c)
+      };
+    }
+
+    function spinorFromAngles(theta, phi) {
+      const a = Math.cos(theta / 2);
+      const b = Math.sin(theta / 2);
+      const phase0 = -phi / 2;
+      const phase1 = phi / 2;
+      return {
+        c0: { re: a * Math.cos(phase0), im: a * Math.sin(phase0) },
+        c1: { re: b * Math.cos(phase1), im: b * Math.sin(phase1) }
+      };
+    }
+
+    function complexText(z) {
+      const re = Math.abs(z.re) < 0.0005 ? 0 : z.re;
+      const im = Math.abs(z.im) < 0.0005 ? 0 : z.im;
+      return `${re.toFixed(3)} ${im >= 0 ? '+' : '−'} ${Math.abs(im).toFixed(3)}i`;
+    }
+
+    function buildEvolution(params) {
+      const r0 = blochFromAngles(params.theta0, params.phi0);
+      const n = axisFromAngles(params.axisTheta, params.axisPhi);
+      const data = [];
+
+      for (let i = 0; i <= samples; i++) {
+        const s = i / samples;
+        const r = rotateVector(r0, n, params.alpha * s);
+        const ang = anglesFromBloch(r);
+        data.push({ s, r, theta: ang.theta, phi: ang.phi });
+      }
+
+      const idx = Math.round(params.progress * samples);
+      const current = data[idx];
+      const final = data[data.length - 1];
+      return { r0, n, data, current, final };
+    }
+
+    function setupCanvas(canvas) {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.max(1, Math.round(rect.width * dpr));
+      canvas.height = Math.max(1, Math.round(rect.height * dpr));
+      const ctx = canvas.getContext('2d');
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      return { ctx, w: rect.width, h: rect.height };
+    }
+
+    function project(p, w, h) {
+      const v = getView();
+      const yaw = v.yaw * DEG;
+      const pitch = v.pitch * DEG;
+
+      const cy = Math.cos(yaw), sy = Math.sin(yaw);
+      const x1 = cy * p.x - sy * p.y;
+      const y1 = sy * p.x + cy * p.y;
+      const z1 = p.z;
+
+      const cp = Math.cos(pitch), sp = Math.sin(pitch);
+      const x2 = x1;
+      const y2 = cp * y1 - sp * z1;
+      const z2 = sp * y1 + cp * z1;
+
+      const scale = Math.min(w, h) * 0.34 * v.zoom;
+      return {
+        x: w / 2 + x2 * scale,
+        y: h / 2 - y2 * scale,
+        z: z2,
+        scale
+      };
+    }
+
+    function drawLine3D(ctx, pts, w, h, style = {}) {
+      if (pts.length < 2) return;
+      ctx.save();
+      ctx.strokeStyle = style.color || '#000';
+      ctx.lineWidth = style.width || 2;
+      ctx.globalAlpha = style.alpha ?? 1;
+      if (style.dash) ctx.setLineDash(style.dash);
+
+      pts.forEach((p, i) => {
+        const q = project(p, w, h);
+        if (i === 0) ctx.beginPath(), ctx.moveTo(q.x, q.y);
+        else ctx.lineTo(q.x, q.y);
+      });
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawArrow3D(ctx, from, to, w, h, color, width = 4, label = '') {
+      const a = project(from, w, h);
+      const b = project(to, w, h);
+
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = width;
+      ctx.lineCap = 'round';
+
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const len = Math.hypot(dx, dy) || 1;
+      const ux = dx / len;
+      const uy = dy / len;
+      const size = 12 + width;
+      ctx.beginPath();
+      ctx.moveTo(b.x, b.y);
+      ctx.lineTo(b.x - ux * size - uy * size * 0.45, b.y - uy * size + ux * size * 0.45);
+      ctx.lineTo(b.x - ux * size + uy * size * 0.45, b.y - uy * size - ux * size * 0.45);
+      ctx.closePath();
+      ctx.fill();
+
+      if (label) {
+        ctx.font = '700 13px Inter, Segoe UI, sans-serif';
+        ctx.fillText(label, b.x + 8, b.y - 8);
+      }
+      ctx.restore();
+    }
+
+    function drawPoint3D(ctx, p, w, h, color, label = '', radius = 5) {
+      const q = project(p, w, h);
+      ctx.save();
+      ctx.fillStyle = color;
+      ctx.strokeStyle = cssVar('--panel-solid');
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(q.x, q.y, radius, 0, 2 * Math.PI);
+      ctx.fill();
+      ctx.stroke();
+      if (label) {
+        ctx.fillStyle = color;
+        ctx.font = '800 13px Inter, Segoe UI, sans-serif';
+        ctx.fillText(label, q.x + 8, q.y - 8);
+      }
+      ctx.restore();
+    }
+
+    function circlePoints(type, count = 220) {
+      const pts = [];
+      for (let i = 0; i <= count; i++) {
+        const a = 2 * Math.PI * i / count;
+        if (type === 'xy') pts.push({ x: Math.cos(a), y: Math.sin(a), z: 0 });
+        if (type === 'xz') pts.push({ x: Math.cos(a), y: 0, z: Math.sin(a) });
+        if (type === 'yz') pts.push({ x: 0, y: Math.cos(a), z: Math.sin(a) });
+      }
+      return pts;
+    }
+
+    function drawBloch() {
+      const { ctx, w, h } = setupCanvas(els.blochCanvas);
+      const c = colors();
+      const params = getParams();
+      const sim = buildEvolution(params);
+      const view = getView();
+
+      ctx.clearRect(0, 0, w, h);
+
+      const center = project({ x: 0, y: 0, z: 0 }, w, h);
+      const radius = center.scale;
+
+      const grad = ctx.createRadialGradient(center.x - radius * 0.35, center.y - radius * 0.45, radius * 0.08, center.x, center.y, radius);
+      grad.addColorStop(0, document.body.classList.contains('dark') ? 'rgba(101,216,232,0.18)' : 'rgba(31,122,140,0.15)');
+      grad.addColorStop(1, document.body.classList.contains('dark') ? 'rgba(244,189,99,0.06)' : 'rgba(217,154,54,0.08)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(center.x, center.y, radius, 0, 2 * Math.PI);
+      ctx.fill();
+      ctx.strokeStyle = c.border;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      drawLine3D(ctx, circlePoints('xy'), w, h, { color: c.border, width: 1.5, alpha: 0.95 });
+      drawLine3D(ctx, circlePoints('xz'), w, h, { color: c.border, width: 1.5, alpha: 0.95 });
+      drawLine3D(ctx, circlePoints('yz'), w, h, { color: c.border, width: 1.5, alpha: 0.95 });
+
+      drawLine3D(ctx, [{ x: -1.15, y: 0, z: 0 }, { x: 1.15, y: 0, z: 0 }], w, h, { color: c.muted, width: 1.7, alpha: 0.8 });
+      drawLine3D(ctx, [{ x: 0, y: -1.15, z: 0 }, { x: 0, y: 1.15, z: 0 }], w, h, { color: c.muted, width: 1.7, alpha: 0.8 });
+      drawLine3D(ctx, [{ x: 0, y: 0, z: -1.15 }, { x: 0, y: 0, z: 1.15 }], w, h, { color: c.muted, width: 1.7, alpha: 0.8 });
+
+      [
+        [{ x: 1.22, y: 0, z: 0 }, '+x'],
+        [{ x: 0, y: 1.22, z: 0 }, '+y'],
+        [{ x: 0, y: 0, z: 1.24 }, '|0⟩'],
+        [{ x: 0, y: 0, z: -1.24 }, '|1⟩'],
+        [{ x: 1.08, y: 0, z: 0 }, '|+⟩']
+      ].forEach(([p, text]) => {
+        const q = project(p, w, h);
+        ctx.fillStyle = text === '|+⟩' ? c.good : c.text;
+        ctx.font = '800 14px Inter, Segoe UI, sans-serif';
+        ctx.fillText(text, q.x + 5, q.y - 5);
+      });
+
+      drawLine3D(ctx, sim.data.map(d => d.r), w, h, { color: c.accent, width: 4.5, alpha: 0.95 });
+
+      const currentCount = Math.max(2, Math.round(params.progress * samples));
+      drawLine3D(ctx, sim.data.slice(0, currentCount + 1).map(d => d.r), w, h, { color: c.primaryStrong, width: 5, alpha: 0.9 });
+
+      drawArrow3D(ctx, { x: 0, y: 0, z: 0 }, { x: sim.n.x * 1.05, y: sim.n.y * 1.05, z: sim.n.z * 1.05 }, w, h, c.primary, 5, 'n');
+      drawArrow3D(ctx, { x: 0, y: 0, z: 0 }, sim.current.r, w, h, c.danger, 6, 'ψ');
+
+      drawPoint3D(ctx, sim.r0, w, h, c.primaryStrong, 'initial', 5.5);
+      drawPoint3D(ctx, sim.final.r, w, h, c.good, 'final', 5.5);
+      drawPoint3D(ctx, sim.current.r, w, h, c.danger, '', 7);
+
+      ctx.fillStyle = c.text;
+      ctx.font = '900 17px Inter, Segoe UI, sans-serif';
+      ctx.fillText('Bloch vector r = (sinθ cosφ, sinθ sinφ, cosθ)', 22, 30);
+      ctx.fillStyle = c.muted;
+      ctx.font = '13px Inter, Segoe UI, sans-serif';
+      ctx.fillText('U(s)=exp[-i sα n·σ/2]；拖动可调视角，滚轮缩放。', 22, 53);
+      ctx.fillText(`view: yaw=${view.yaw.toFixed(0)}°, pitch=${view.pitch.toFixed(0)}°, zoom=${view.zoom.toFixed(2)}×`, 22, 74);
+    }
+
+    function drawParamPlot() {
+      const { ctx, w, h } = setupCanvas(els.paramCanvas);
+      const c = colors();
+      const params = getParams();
+      const sim = buildEvolution(params);
+      ctx.clearRect(0, 0, w, h);
+
+      const pad = { l: 52, r: 24, t: 26, b: 42 };
+      const x0 = pad.l, y0 = pad.t;
+      const pw = w - pad.l - pad.r;
+      const ph = h - pad.t - pad.b;
+
+      function xMap(s) { return x0 + s * pw; }
+      function yMapDeg(deg) { return y0 + ph - (deg / 360) * ph; }
+
+      ctx.strokeStyle = c.border;
+      ctx.lineWidth = 1;
+      ctx.font = '12px Inter, Segoe UI, sans-serif';
+      ctx.fillStyle = c.muted;
+
+      [0, 90, 180, 270, 360].forEach(deg => {
+        const y = yMapDeg(deg);
+        ctx.beginPath();
+        ctx.moveTo(x0, y);
+        ctx.lineTo(x0 + pw, y);
+        ctx.stroke();
+        ctx.fillText(`${deg}°`, 8, y + 4);
+      });
+
+      [0, 0.25, 0.5, 0.75, 1].forEach(s => {
+        const x = xMap(s);
+        ctx.beginPath();
+        ctx.moveTo(x, y0);
+        ctx.lineTo(x, y0 + ph);
+        ctx.stroke();
+        ctx.fillText(s.toFixed(2), x - 12, y0 + ph + 24);
+      });
+
+      function drawCurve(getDeg, color, label) {
+        ctx.save();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        sim.data.forEach((d, i) => {
+          const x = xMap(d.s);
+          const y = yMapDeg(getDeg(d));
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+        ctx.fillStyle = color;
+        ctx.font = '800 13px Inter, Segoe UI, sans-serif';
+        ctx.fillText(label, x0 + pw - 58, yMapDeg(getDeg(sim.data[sim.data.length - 1])) - 8);
+        ctx.restore();
+      }
+
+      drawCurve(d => d.theta * RAD, c.primary, 'θ');
+      drawCurve(d => d.phi * RAD, c.accent, 'φ');
+
+      const sx = xMap(params.progress);
+      ctx.strokeStyle = c.danger;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath();
+      ctx.moveTo(sx, y0);
+      ctx.lineTo(sx, y0 + ph);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      const current = sim.current;
+      ctx.fillStyle = c.danger;
+      ctx.beginPath();
+      ctx.arc(sx, yMapDeg(current.theta * RAD), 5, 0, 2 * Math.PI);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(sx, yMapDeg(current.phi * RAD), 5, 0, 2 * Math.PI);
+      ctx.fill();
+
+      ctx.fillStyle = c.text;
+      ctx.font = '900 14px Inter, Segoe UI, sans-serif';
+      ctx.fillText('参数随归一化进度 s 演化', x0, 18);
+      ctx.fillStyle = c.muted;
+      ctx.font = '12px Inter, Segoe UI, sans-serif';
+      ctx.fillText('s', x0 + pw + 8, y0 + ph + 4);
+    }
+
+    function updateLabels() {
+      const p = getParams();
+      const sim = buildEvolution(p);
+      const ang = sim.current;
+      const r = ang.r;
+      const spinor = spinorFromAngles(ang.theta, ang.phi);
+      const view = getView();
+
+      els.valTheta0.textContent = formatDegPlain(els.theta0.value);
+      els.valPhi0.textContent = formatDegPlain(els.phi0.value);
+      els.valAxisTheta.textContent = formatDegPlain(els.axisTheta.value);
+      els.valAxisPhi.textContent = formatDegPlain(els.axisPhi.value);
+      els.valAlpha.textContent = formatDegPlain(els.alpha.value);
+      els.valProgress.textContent = `${Math.round(p.progress * 100)}%`;
+      els.valSpeed.textContent = `${p.speed.toFixed(2)}×`;
+      els.valYaw.textContent = `${view.yaw.toFixed(0)}°`;
+      els.valPitch.textContent = `${view.pitch.toFixed(0)}°`;
+      els.valZoom.textContent = `${view.zoom.toFixed(2)}×`;
+
+      els.mTheta.textContent = formatDeg(ang.theta);
+      els.mPhi.textContent = formatDeg(ang.phi);
+      els.mVector.textContent = `(${r.x.toFixed(3)}, ${r.y.toFixed(3)}, ${r.z.toFixed(3)})`;
+      els.mP1.textContent = ((1 - r.z) / 2).toFixed(3);
+      els.spinorBox.textContent = `|ψ⟩ = [${complexText(spinor.c0)}, ${complexText(spinor.c1)}]ᵀ`;
+    }
+
+    function render() {
+      updateLabels();
+      drawBloch();
+      drawParamPlot();
+    }
+
+    function stop() {
+      playing = false;
+      els.btnPlay.textContent = '播放';
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = null;
+      lastFrame = null;
+    }
+
+    function animate(timestamp) {
+      if (!playing) return;
+      if (lastFrame === null) lastFrame = timestamp;
+      const elapsed = Math.min(0.06, (timestamp - lastFrame) / 1000);
+      lastFrame = timestamp;
+
+      const p = getParams();
+      let next = p.progress + elapsed * 0.22 * p.speed;
+      if (next > 1) next = 0;
+      els.progress.value = next.toFixed(3);
+      render();
+      rafId = requestAnimationFrame(animate);
+    }
+
+    function setHadamardDefault() {
+      stop();
+      els.theta0.value = 0;
+      els.phi0.value = 0;
+      els.axisTheta.value = 90;
+      els.axisPhi.value = 90;
+      els.alpha.value = 90;
+      els.progress.value = 0;
+      render();
+    }
+
+    function setAxis(name) {
+      const axes = {
+        x: { th: 90, ph: 0 },
+        y: { th: 90, ph: 90 },
+        z: { th: 0, ph: 0 },
+        minusY: { th: 90, ph: 270 }
+      };
+      const a = axes[name];
+      if (!a) return;
+      els.axisTheta.value = a.th;
+      els.axisPhi.value = a.ph;
+      render();
+    }
+
+    function setupBlochInteractions() {
+      const canvas = els.blochCanvas;
+
+      function pointerXY(ev) {
+        if (ev.touches && ev.touches.length) {
+          return { x: ev.touches[0].clientX, y: ev.touches[0].clientY };
+        }
+        return { x: ev.clientX, y: ev.clientY };
+      }
+
+      canvas.addEventListener('mousedown', (ev) => {
+        isDragging = true;
+        lastPointer = pointerXY(ev);
+        canvas.classList.add('dragging');
+      });
+
+      window.addEventListener('mousemove', (ev) => {
+        if (!isDragging) return;
+        const p = pointerXY(ev);
+        const dx = p.x - lastPointer.x;
+        const dy = p.y - lastPointer.y;
+        lastPointer = p;
+
+        const v = getView();
+        v.yaw += dx * 0.5;
+        v.pitch += dy * 0.35;
+        v.pitch = clamp(v.pitch, -80, 80);
+        setView(v);
+        render();
+      });
+
+      window.addEventListener('mouseup', () => {
+        isDragging = false;
+        canvas.classList.remove('dragging');
+      });
+
+      canvas.addEventListener('mouseleave', () => {
+        isDragging = false;
+        canvas.classList.remove('dragging');
+      });
+
+      canvas.addEventListener('wheel', (ev) => {
+        ev.preventDefault();
+        const v = getView();
+        const factor = ev.deltaY > 0 ? 0.94 : 1.06;
+        v.zoom = clamp(v.zoom * factor, 0.55, 1.8);
+        setView(v);
+        render();
+      }, { passive: false });
+
+      canvas.addEventListener('dblclick', () => {
+        resetView();
+      });
+
+      canvas.addEventListener('touchstart', (ev) => {
+        if (ev.touches.length !== 1) return;
+        isDragging = true;
+        lastPointer = pointerXY(ev);
+      }, { passive: true });
+
+      canvas.addEventListener('touchmove', (ev) => {
+        if (!isDragging || ev.touches.length !== 1) return;
+        const p = pointerXY(ev);
+        const dx = p.x - lastPointer.x;
+        const dy = p.y - lastPointer.y;
+        lastPointer = p;
+
+        const v = getView();
+        v.yaw += dx * 0.45;
+        v.pitch += dy * 0.3;
+        v.pitch = clamp(v.pitch, -80, 80);
+        setView(v);
+        render();
+      }, { passive: true });
+
+      canvas.addEventListener('touchend', () => {
+        isDragging = false;
+      });
+    }
+
+    els.btnPlay.addEventListener('click', () => {
+      playing = !playing;
+      els.btnPlay.textContent = playing ? '暂停' : '播放';
+      if (playing) rafId = requestAnimationFrame(animate);
+      else stop();
+    });
+
+    els.btnResetProgress.addEventListener('click', () => {
+      stop();
+      els.progress.value = 0;
+      render();
+    });
+
+    els.btnJumpEnd.addEventListener('click', () => {
+      stop();
+      els.progress.value = 1;
+      render();
+    });
+
+    els.btnHadamard.addEventListener('click', setHadamardDefault);
+
+    els.btnRandom.addEventListener('click', () => {
+      stop();
+      els.theta0.value = Math.round(Math.random() * 180);
+      els.phi0.value = Math.round(Math.random() * 360);
+      els.progress.value = 0;
+      render();
+    });
+
+    els.btnTheme.addEventListener('click', () => {
+      document.body.classList.toggle('dark');
+      render();
+    });
+
+    els.btnResetView.addEventListener('click', resetView);
+    els.btnResetViewTop.addEventListener('click', resetView);
+
+    document.querySelectorAll('[data-axis]').forEach(btn => {
+      btn.addEventListener('click', () => setAxis(btn.dataset.axis));
+    });
+
+    ['theta0', 'phi0', 'axisTheta', 'axisPhi', 'alpha', 'progress', 'speed', 'viewYaw', 'viewPitch', 'viewZoom'].forEach(id => {
+      els[id].addEventListener('input', () => {
+        if (id === 'progress') stop();
+        render();
+      });
+    });
+
+    window.addEventListener('resize', render);
+
+    setView(defaultView);
+    setupBlochInteractions();
+    setHadamardDefault();
+  </script>
+</body>
+</html>

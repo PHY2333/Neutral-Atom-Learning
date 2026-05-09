@@ -1,7 +1,7 @@
 ### 共振情形：绕赤道方向转动
 当$\Delta=0$,$\boldsymbol{\Omega}_{\mathrm{eff}}=(\Omega \cos \phi,\Omega \sin \phi,0)$
 旋转轴在Bloch赤道平面内,Bloch矢量绕轴旋转
-[点击打开 Rabi 模拟器](<file:///D:/MyKnowledgeBase/Neutral Atom Vault/Code/Rabi振荡.html>)
+[点击打开 Rabi 模拟器](<../../Code/Rabi振荡.html>)
 
 ---
 ### $\pi$脉冲
